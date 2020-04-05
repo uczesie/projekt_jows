@@ -240,6 +240,11 @@ def scen1(network, htb=None):
         host.cmd('mgen input /home/mininet/mininet/custom/scen1_{name}.mgn output /home/mininet/mininet/results/scen1_mgen_{name}.txt &'.format(
             name=host.name))
 
+    dstsrv = network.get('h1')
+    dstsrv.cmd('python -m SimpleHTTPServer &')
+    for host in hosts:
+        host.cmd('httperf --server 192.168.1.100 --port 8000 --wsess=10,3,4 --rate 1 --timeout 310 --hog --verbose > /home/mininet/mininet/results/scen1_httperf_{0}.txt &'.format(host.name))
+
     # ruch tla tcp
     src, dst = network.get('cloud'), network.get('h1')
     dst.cmd('iperf -p 7000 -s -i 1 > /home/mininet/mininet/results/scen1_iperf_server_{src}_{dst}.txt &'.format(
@@ -260,7 +265,7 @@ def scen1(network, htb=None):
     for host in hosts:
         host.cmd('pkill mgen')
         host.cmd('pkill iperf')
-
+    dstsrv.cmd("kill %1")
     r0.cmd('/home/mininet/mininet/custom/tc_disable.sh')
 
 
