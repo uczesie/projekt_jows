@@ -1,0 +1,15 @@
+# zakres portów 1,3,4,33-40 -bez spacji
+# sluchaj voip
+0.0 LISTEN UDP 5060
+
+# voip z pc2
+0.0 ON 5002 UDP DST 192.168.2.100/5060 PERIODIC [50.0 172]
+
+# voip z cloud
+0.0 ON 5000 UDP DST 192.168.0.100/5060 PERIODIC [50.0 172]
+
+# stop
+
+# konczenie transmisji
+300.0 OFF 5000
+300.0 OFF 5002

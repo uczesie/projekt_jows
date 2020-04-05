@@ -1,0 +1,18 @@
+TXBUFFER 10000
+
+# sluchaj voip
+0.0 LISTEN UDP 5060
+
+# [czas] [on/off] [nr przeplywu]
+# symulacja voip
+# ipv4 [20B] + udp [8B] --to bedzie automatycznie z mgen
+# rtp [12B] + voice payload G.711 [160B] = [172B]
+# 20 [ms] * 50
+# trzeba w 2 strony
+# CBR
+
+# voip z pc1
+0.0 ON 5000 UDP DST 192.168.1.100/5060 PERIODIC [50.0 172]
+
+# konczenie transmisji
+300.0 OFF 5000
