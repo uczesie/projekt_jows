@@ -121,7 +121,7 @@ class NetworkTopo(Topo):
 
         # ------------------------------- add links
         linkopts = dict(bw=10, delay='2ms', loss=0,
-                        max_queue_size=100, use_htb=False)
+                        max_queue_size=100, use_htb=True)
 
         for i, link in enumerate([(r0, h1), (r0, h2), (r0, h3), (r0, h4), (r0, h5)]):
             self.addLink(link[0], link[1],
@@ -135,7 +135,7 @@ class NetworkTopo(Topo):
                      params1={'ip': '192.168.0.1/24'},
                      params2={'ip': '192.168.0.100/24'},
                      bw=100, delay='20ms', loss=0,
-                     max_queue_size=1000, use_htb=False
+                     max_queue_size=1000, use_htb=True
                      )
 
         # self.addLink(r0, cloud,
@@ -235,15 +235,17 @@ def scen1(network, htb=None):
     if htb is not None:
         r0.cmd('/home/mininet/mininet/custom/{}.sh'.format(htb))
 
-    # uruchomienie mgen
+    # uruchomienie mgen, voip
     for host in hosts:
         host.cmd('mgen input /home/mininet/mininet/custom/scen1_{name}.mgn output /home/mininet/mininet/results/scen1_mgen_{name}.txt &'.format(
             name=host.name))
 
-    dstsrv = network.get('h1')
-    dstsrv.cmd('python -m SimpleHTTPServer &')
-    for host in hosts:
-        host.cmd('httperf --server 192.168.1.100 --port 8000 --wsess=10,3,4 --rate 1 --timeout 310 --hog --verbose > /home/mininet/mininet/results/scen1_httperf_{0}.txt &'.format(host.name))
+    # http
+    httpserver = network.get('cloud')
+    httpserver.cmd('python -m SimpleHTTPServer 80 &')
+    for host in hosts[:-1]:
+        host.cmd(
+            'httperf --server 192.168.0.100 --port 80 --wsess=200,3,4 --rate 1 --timeout 10 --hog --verbose > /home/mininet/mininet/results/scen1_httperf_{0}.txt &'.format(host.name))
 
     # ruch tla tcp
     src, dst = network.get('cloud'), network.get('h1')
@@ -265,7 +267,7 @@ def scen1(network, htb=None):
     for host in hosts:
         host.cmd('pkill mgen')
         host.cmd('pkill iperf')
-    dstsrv.cmd("kill %1")
+    httpserver.cmd("kill %1")
     r0.cmd('/home/mininet/mininet/custom/tc_disable.sh')
 
 
