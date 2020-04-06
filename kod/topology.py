@@ -275,6 +275,66 @@ def scen1(network, htb=None):
     r0.cmd('/home/mininet/mininet/custom/tc_disable.sh')
 
 
+
+def scen2(network, htb=None):
+    # scenariusz 2, duzo voip
+    info('*** Scenariusz duzo voip\n')
+    info('*** htb = {}\n'.format(htb))
+
+    # urzadzenia
+    h1 = network.get('h1')
+    h2 = network.get('h2')
+    h3 = network.get('h3')
+    h4 = network.get('h4')
+    h5 = network.get('h5')
+    r0 = network.get('r0')
+    cloud = network.get('cloud')
+    hosts = [h1, h2, h3, h4, h5, cloud]
+
+    # wlaczanie htb
+    r0.cmd('/home/mininet/mininet/custom/tc_disable.sh')
+    if htb is not None:
+        r0.cmd('/home/mininet/mininet/custom/{}.sh'.format(htb))
+    else:
+        htb = 'pfifo'
+
+    # uruchomienie mgen, voip
+    for host in hosts:
+        host.cmd('mgen input /home/mininet/mininet/custom/scen2_{name}.mgn output /home/mininet/mininet/results/scen2_{q}_mgen_{name}.txt &'.format(
+            name=host.name, q=htb))
+
+    # http
+    httpserver = network.get('cloud')
+    httpserver.cmd('python -m SimpleHTTPServer 80 &')
+    for host in hosts[:-1]:
+        host.cmd(
+            'httperf --server 192.168.0.100 --port 80 --wsess=200,3,4 --rate 1 --timeout 10 --hog --verbose > /home/mininet/mininet/results/scen2_{q}_httperf_{h}.txt &'.format(
+                h=host.name, q=htb))
+
+    # ruch tla tcp
+    src, dst = network.get('cloud'), network.get('h1')
+    dst.cmd('iperf -p 7000 -s -i 1 > /home/mininet/mininet/results/scen2_{q}_iperf_server_{src}_{dst}.txt &'.format(
+        src=src.name, dst=dst.name, q=htb))
+    src.cmd('iperf -p 7000 -c 192.168.1.100 -t 300 -i 1 > /home/mininet/mininet/results/scen2_{q}_iperf_client_{src}_{dst}.txt &'.format(
+            src=src.name, dst=dst.name, q=htb))
+
+    src, dst = network.get('h3'), network.get('h1')
+    dst.cmd('iperf -p 7003 -s -i 1 > /home/mininet/mininet/results/scen2_{q}_iperf_server_{src}_{dst}.txt &'.format(
+        src=src.name, dst=dst.name, q=htb))
+    src.cmd('iperf -p 7003 -c 192.168.1.100 -t 300 -i 1 > /home/mininet/mininet/results/scen2_{q}_iperf_client_{src}_{dst}.txt &'.format(
+            src=src.name, dst=dst.name, q=htb))
+
+    # czekanie na zakonczenie symulacji
+    time.sleep(310)
+
+    # wylaczanie mgena
+    for host in hosts:
+        host.cmd('pkill mgen')
+        host.cmd('pkill iperf')
+    httpserver.cmd("kill %1")
+    r0.cmd('/home/mininet/mininet/custom/tc_disable.sh')
+
+
 def run(scen=None, htb=None):
     "Test linux router"
     topo = NetworkTopo()
