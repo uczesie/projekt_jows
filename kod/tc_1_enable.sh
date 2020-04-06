@@ -26,6 +26,7 @@ do
   # filtrowanie ruchu
   tc filter add dev r0-eth${i} parent 1:0 protocol ip prio 1 u32 match ip dport 5060 0xffff flowid 1:10
   tc filter add dev r0-eth${i} parent 1:0 protocol ip prio 1 u32 match ip dport 80 0xffff flowid 1:20
+  tc filter add dev r0-eth${i} parent 1:0 protocol ip prio 1 u32 match ip sport 80 0xffff flowid 1:20
 done
 
 # delete
