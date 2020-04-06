@@ -219,6 +219,7 @@ def testMgen(network):
 def scen1(network, htb=None):
     # scenariusz 1, bez obciazen
     info('*** Scenariusz bez obciazen\n')
+    info('*** htb = {}\n'.format(htb))
 
     # urzadzenia
     h1 = network.get('h1')
@@ -234,31 +235,34 @@ def scen1(network, htb=None):
     r0.cmd('/home/mininet/mininet/custom/tc_disable.sh')
     if htb is not None:
         r0.cmd('/home/mininet/mininet/custom/{}.sh'.format(htb))
+    else:
+        htb = 'pfifo'
 
     # uruchomienie mgen, voip
     for host in hosts:
-        host.cmd('mgen input /home/mininet/mininet/custom/scen1_{name}.mgn output /home/mininet/mininet/results/scen1_mgen_{name}.txt &'.format(
-            name=host.name))
+        host.cmd('mgen input /home/mininet/mininet/custom/scen1_{name}.mgn output /home/mininet/mininet/results/scen1_{q}_mgen_{name}.txt &'.format(
+            name=host.name, q=htb))
 
     # http
     httpserver = network.get('cloud')
     httpserver.cmd('python -m SimpleHTTPServer 80 &')
     for host in hosts[:-1]:
         host.cmd(
-            'httperf --server 192.168.0.100 --port 80 --wsess=200,3,4 --rate 1 --timeout 10 --hog --verbose > /home/mininet/mininet/results/scen1_httperf_{0}.txt &'.format(host.name))
+            'httperf --server 192.168.0.100 --port 80 --wsess=200,3,4 --rate 1 --timeout 10 --hog --verbose > /home/mininet/mininet/results/scen1_{q}_httperf_{h}.txt &'.format(
+                h=host.name, q=htb))
 
     # ruch tla tcp
     src, dst = network.get('cloud'), network.get('h1')
-    dst.cmd('iperf -p 7000 -s -i 1 > /home/mininet/mininet/results/scen1_iperf_server_{src}_{dst}.txt &'.format(
-        src=src.name, dst=dst.name))
-    src.cmd('iperf -p 7000 -c 192.168.1.100 -t 300 -i 1 > /home/mininet/mininet/results/scen1_iperf_client_{src}_{dst}.txt &'.format(
-            src=src.name, dst=dst.name))
+    dst.cmd('iperf -p 7000 -s -i 1 > /home/mininet/mininet/results/scen1_{q}_iperf_server_{src}_{dst}.txt &'.format(
+        src=src.name, dst=dst.name, q=htb))
+    src.cmd('iperf -p 7000 -c 192.168.1.100 -t 300 -i 1 > /home/mininet/mininet/results/scen1_{q}_iperf_client_{src}_{dst}.txt &'.format(
+            src=src.name, dst=dst.name, q=htb))
 
     src, dst = network.get('h3'), network.get('h1')
-    dst.cmd('iperf -p 7003 -s -i 1 > /home/mininet/mininet/results/scen1_iperf_server_{src}_{dst}.txt &'.format(
-        src=src.name, dst=dst.name))
-    src.cmd('iperf -p 7003 -c 192.168.1.100 -t 300 -i 1 > /home/mininet/mininet/results/scen1_iperf_client_{src}_{dst}.txt &'.format(
-            src=src.name, dst=dst.name))
+    dst.cmd('iperf -p 7003 -s -i 1 > /home/mininet/mininet/results/scen1_{q}_iperf_server_{src}_{dst}.txt &'.format(
+        src=src.name, dst=dst.name, q=htb))
+    src.cmd('iperf -p 7003 -c 192.168.1.100 -t 300 -i 1 > /home/mininet/mininet/results/scen1_{q}_iperf_client_{src}_{dst}.txt &'.format(
+            src=src.name, dst=dst.name, q=htb))
 
     # czekanie na zakonczenie symulacji
     time.sleep(310)
@@ -271,7 +275,7 @@ def scen1(network, htb=None):
     r0.cmd('/home/mininet/mininet/custom/tc_disable.sh')
 
 
-def run(htb=None):
+def run(scen=None, htb=None):
     "Test linux router"
     topo = NetworkTopo()
     net = Mininet(topo=topo, link=TCLink)  # controller is used by s1-s3
@@ -282,7 +286,8 @@ def run(htb=None):
 
     # testIperf(net)
     # testMgen(net)
-    scen1(net, htb)
+    globals()[scen](net, htb)
+    # scen1(net, htb)
 
     CLI(net)
     # net.pingAll()
@@ -309,9 +314,10 @@ topos = {'networktopo': (lambda: NetworkTopo())}
 
 if __name__ == '__main__':
     setLogLevel('info')
+
     if len(sys.argv) > 2:
-        without_test()
+        run(scen=sys.argv[1], htb=sys.argv[2])
     elif len(sys.argv) > 1:
-        run(sys.argv[1])
+        run(scen=sys.argv[1])
     else:
-        run()
+        without_test()
